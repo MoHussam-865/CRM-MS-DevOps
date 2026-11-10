@@ -82,6 +82,40 @@ This plan is aligned with `api-plan.md`. Key integration points:
 
 ## 2. Current State
 
+- **Completed:** Phases 1 (Foundation), 2 (Authentication), 3 (Layout & Navigation), 4 (Feature Pages)
+- **Next:** Phase 5 — Docker (Dockerfile, .dockerignore, next.config.ts standalone output)
+- All 6 feature pages implemented with full CRUD: Dashboard, Companies, Customers, Tasks, Notifications, Profile
+- Shared Modal component for add/edit forms
+- Lint and build passing cleanly (TypeScript + ESLint)
+- Dependencies unchanged: `next`, `react`, `react-dom` only
+- ESLint strict rule `react-hooks/set-state-in-effect` — all pages use async-only setState with cancelled flags
+---
+## 2. Current State
+
+- **Completed:** Phases 1 (Foundation), 2 (Authentication), 3 (Layout & Navigation), 4 (Feature Pages)
+- **Next:** Phase 5 — Docker (Dockerfile, .dockerignore, next.config.ts standalone output)
+- All 6 feature pages implemented with full CRUD: Dashboard, Companies, Customers, Tasks, Notifications, Profile
+- Shared Modal component for add/edit forms
+- Lint and build passing cleanly
+- Dependencies unchanged: `next`, `react`, `react-dom` only
+- ESLint strict rule `react-hooks/set-state-in-effect` — all pages use async-only setState with cancelled flags
+---
+---
+
+
+## 2. Current State
+## 2. Current State
+## 2. Current State
+## 2. Current State
+
+- **Completed:** Phases 1 (Foundation), 2 (Authentication), 3 (Layout & Navigation), 4 (Feature Pages)
+- **Next:** Phase 5 — Docker (Dockerfile, .dockerignore, next.config.ts standalone output)
+- All 6 feature pages implemented with full CRUD: Dashboard, Companies, Customers, Tasks, Notifications, Profile
+- Shared Modal component for add/edit forms
+- Lint and build passing cleanly
+- Dependencies unchanged: `next`, `react`, `react-dom` only
+- ESLint strict rule `react-hooks/set-state-in-effect` — all pages use async-only setState with cancelled flags
+
 - Fresh Next.js 16 project created via `create-next-app`
 - TypeScript, Tailwind CSS v4, ESLint, App Router
 - Dependencies: `next`, `react`, `react-dom` only
@@ -148,7 +182,63 @@ app/(protected)/layout.tsx
 
 ---
 
+### Phase 3 — Layout & Navigation ✓
+
+**Goal:** Shared app shell with sidebar and consistent look.
+
+**Status:** ✅ COMPLETED
+
+**Tasks:**
+1. **`src/components/Sidebar.tsx`** — Extracted sidebar component with nav links
+2. **`app/(protected)/layout.tsx`** — Sidebar layout: Dashboard, Companies, Customers, Tasks, Notifications, Profile, Logout
+3. Update root `app/layout.tsx` metadata (title: "MicroCRM")
+4. Create placeholder pages for all routes
+
+**Files created:**
+```
+src/components/Sidebar.tsx
+app/(protected)/dashboard/page.tsx
+app/(protected)/companies/page.tsx
+app/(protected)/customers/page.tsx
+app/(protected)/tasks/page.tsx
+app/(protected)/notifications/page.tsx
+app/(protected)/profile/page.tsx
+```
+
+---
 ### Phase 3 — Layout & Navigation
+### Phase 4 — Feature Pages (CRUD + Dashboard) ✓
+
+**Goal:** Functional pages that call the API and display real data.
+
+**Status:** ✅ COMPLETED
+
+1. **Dashboard** — Stat cards (Total Customers, Companies, Open Tasks, Completed Tasks) + Latest 5 Notifications
+2. **Companies** — Table + Add/Edit/Delete modal
+3. **Customers** — Table + Add/Edit/Delete, status badges (Lead / Customer / Inactive)
+4. **Tasks** — Table + Add/Edit/Delete, priority badges (Low/Medium/High), status badges (Todo/In Progress/Done)
+5. **Notifications** — Read-only list of title, message, created_at
+6. **Profile** — Display current user info (name, email)
+
+**API Paths:** All endpoints use `/api` prefix as defined by the API service:
+`POST /api/login`, `GET /api/me`, `GET/POST /api/companies`, `PUT/DELETE /api/companies/:id` (same pattern for customers, tasks). `GET /api/notifications`.
+
+**Files created:**
+```
+src/components/Modal.tsx
+```
+
+**Files updated:**
+```
+app/(protected)/dashboard/page.tsx    — stat cards + notifications
+app/(protected)/companies/page.tsx    — full CRUD table + modal form
+app/(protected)/customers/page.tsx    — full CRUD table + modal form + status badges
+app/(protected)/tasks/page.tsx         — full CRUD table + modal form + priority/status badges
+app/(protected)/notifications/page.tsx — read-only list from API
+app/(protected)/profile/page.tsx       — user info from AuthContext
+```
+
+---
 
 **Goal:** Shared app shell with sidebar and consistent look.
 
