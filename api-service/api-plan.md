@@ -12,7 +12,7 @@
 This document:
 
 1. Summarizes the project goal and the rules that apply to this service.
-2. Captures the current state of the codebase (empty Next.js scaffold).
+2. Captures the current state of the codebase (complete API service — see §8).
 3. Documents the key design decisions for the API service.
 4. Lays out a concrete, minimal, ordered plan to reach a working API service
    that integrates with the other services (frontend + notification-service + PostgreSQL).
@@ -99,7 +99,9 @@ These are the "project constitution" for AI agents:
 
 ---
 
-## 4. Current state of this folder
+## 4. Project history — scaffolding
+
+> This section records how the project started. The current full state is documented in §8.
 
 This folder was created with:
 
@@ -107,7 +109,7 @@ This folder was created with:
 npx create-next-app@latest app-name --ts --tailwind --eslint --app --use-npm
 ```
 
-It is an **empty, untouched** Next.js scaffold. Verified versions:
+Original scaffold info (for reference):
 
 | Dependency | Version |
 |---|---|
@@ -116,14 +118,6 @@ It is an **empty, untouched** Next.js scaffold. Verified versions:
 | `tailwindcss` (+ `@tailwindcss/turbopack`) | 4.3.3 |
 | `typescript` | ^5 |
 | `eslint` + `eslint-config-next` | ^9 / 16.4.6 |
-
-Current files of note:
-
-- `app/layout.tsx`, `app/page.tsx`, `app/globals.css` — boilerplate UI (will be trimmed).
-- `next.config.ts` — has `cacheComponents`, `partialPrefetching`, and a `turbopack` CSS rule.
-- `package.json` — scripts: `dev`, `build`, `start`, `lint`.
-- `.gitignore` — already ignores `.env*` and `.next/`.
-- `AGENTS.md` — Next.js agent rules (see warning below).
 
 ### ⚠️ Critical warning — Next.js 16 has breaking changes
 
@@ -383,11 +377,74 @@ All under `/api`. Protected endpoints require a valid `Authorization: Bearer <to
 
 ---
 
-## 8. Notification integration
+## 8. Current state & Reference
 
-The API calls the notification service with native `fetch`. Wrap it in
-`lib/services/notificationClient.ts`. Fire-and-forget with graceful failure:
-if the notification service is down, **log the error but do not fail the main request**.
+> ✅ All 9 phases are complete. The API service is fully implemented, builds, and lints cleanly.
+
+### 8.1 Source inventory
+
+| Layer | Files |
+|---|---|
+| **Config / DB** | `lib/config.ts`, `lib/db.ts`, `lib/migrate.ts`, `lib/migrations/001_init.sql` |
+| **Models** | `user.ts`, `company.ts`, `customer.ts`, `task.ts`, `notification.ts` |
+| **Repositories** | `userRepository.ts`, `companyRepository.ts`, `customerRepository.ts`, `taskRepository.ts` |
+| **Services** | `authService.ts`, `companyService.ts`, `customerService.ts`, `taskService.ts`, `notificationClient.ts` |
+| **Auth utilities** | `lib/utils/auth.ts`, `lib/utils/response.ts` |
+| **Route handlers** | `login`, `me`, `health`, `companies` (+ `[id]`), `customers` (+ `[id]`), `tasks` (+ `[id]`), `notifications` |
+| **UI placeholder** | `app/page.tsx` (minimal), `app/layout.tsx`, `app/globals.css` |
+| **Docker** | `Dockerfile` (multi-stage), `.dockerignore` |
+| **Dev scripts** | `scripts/migrate.ts`, `scripts/verify-auth.ts` |
+
+### 8.2 Routes registered
+
+```
+○  /                       (static placeholder)
+○  /_notfound              (built-in)
+ƒ  /api/companies
+ƒ  /api/companies/[id]
+ƒ  /api/customers
+ƒ  /api/customers/[id]
+○  /api/health
+ƒ  /api/login
+ƒ  /api/me
+ƒ  /api/notifications
+ƒ  /api/tasks
+ƒ  /api/tasks/[id]
+```
+
+### 8.3 Response shapes
+
+```
+GET  /api/health           → { "status": "ok" }
+
+POST /api/login            → { success: true, data: { token, user } }
+GET  /api/me               → { success: true, data: { user } }
+
+GET  /api/companies        → { success: true, data: [...] }
+POST /api/companies        → { success: true, data: { company } }
+PUT  /api/companies/[id]   → { success: true, data: { company } }
+DELETE /api/companies/[id] → { success: true, message: "Deleted" }
+
+GET  /api/customers        → { success: true, data: [...] }
+POST /api/customers        → { success: true, data: { customer } }
+PUT  /api/customers/[id]   → { success: true, data: { customer } }
+DELETE /api/customers/[id] → { success: true, message: "Deleted" }
+
+GET  /api/tasks            → { success: true, data: [...] }
+POST /api/tasks            → { success: true, data: { task } }
+PUT  /api/tasks/[id]       → { success: true, data: { task } }
+DELETE /api/tasks/[id]     → { success: true, message: "Deleted" }
+
+GET  /api/notifications    → (proxy) raw response from notification service
+```
+
+All errors: `{ success: false, message: "..." }` with appropriate HTTP status.
+
+### 8.4 Notification integration
+
+The API calls the notification service with native `fetch` via
+`lib/services/notificationClient.ts`. **Fire-and-forget with graceful failure:**
+if the notification service is down, the error is logged but the request does **not** fail.
 
 Notifications are triggered when:
 
@@ -403,72 +460,37 @@ POST {NOTIFICATION_SERVICE_URL}/notify
 Body: { "title": "...", "message": "..." }
 ```
 
-`GET /api/notifications` proxies to `GET {NOTIFICATION_SERVICE_URL}/notifications`.
+`GET /api/notifications` proxies to `GET {NOTIFICATION_SERVICE_URL}/notifications` and
+forwards the response verbatim.
+
+### 8.5 Key design decisions
+
+- **Controller → Service → Repository** — business logic lives in services, SQL in repos,
+  controllers stay thin.
+- **Zod 4.x** for validation — `.issues` not `.errors`; `@types/pg` requires `rowCount ?? 0`.
+- **Notification calls are fire-and-forget** — failures logged, never fail the request.
+- **JWTs with bcrypt** — passwords hashed with `bcryptjs`, tokens signed with `jsonwebtoken`.
+- **Consistent envelope** — all data endpoints return `{ success, data }`, errors return `{ success, message }`.
+- **DB migrations** — `.sql` files in `lib/migrations/`, run via `lib/migrate.ts` / `scripts/migrate.ts`.
 
 ---
 
-## 9. Plan phases (minimal path to a working service)
+## 9. Completed phases
 
-Work through these in order. Each phase is small and independently verifiable.
+All phases have been completed. This section is kept as an implementation log.
 
-### Phase 0 — Reconfirm tooling & read the Next.js 16 docs
-- Skim `node_modules/next/dist/docs/01-app` for route handlers and dynamic route `params`.
-- Run `npm install` (already done) and `npm run build` to confirm the scaffold compiles.
-- **Verify:** `npm run dev` starts and `/` serves the boilerplate page.
-
-### Phase 1 — Foundations: config, DB, migrations
-- Add deps: `pg`, `jsonwebtoken`, `bcryptjs`, `zod` (+ `@types/*`).
-- Create `.env.example` and a gitignored `.env` for local dev.
-- Implement `lib/config.ts` (typed env), `lib/db.ts` (pg Pool), `lib/migrate.ts`.
-- Write `lib/migrations/001_init.sql` (tables + seeded admin user) and run it.
-- **Verify:** migration creates tables; a quick script/`psql` check shows the admin row.
-
-### Phase 2 — Response + auth utilities
-- `lib/utils/response.ts` (`ok`/`fail`).
-- `lib/utils/auth.ts` (sign/verify JWT, extract user from request).
-- `lib/models/user.ts` + zod schema; `lib/repositories/userRepository.ts`.
-- **Verify:** small local script signs + verifies a token and hashes a password.
-
-### Phase 3 — Auth endpoints
-- `POST /api/login` and `GET /api/me` (thin route handlers → `authService`).
-- **Verify (curl):**
-  - `curl -X POST localhost:4000/api/login -d '{"email":"admin@...","password":"..."}' -H 'Content-Type: application/json'` returns a token.
-  - `GET /api/me` with the token returns the user.
-
-### Phase 4 — Companies CRUD
-- `lib/models/company.ts`, `lib/repositories/companyRepository.ts`,
-  `lib/services/companyService.ts`, and the `companies` + `companies/[id]` route handlers.
-- Add company-created notification trigger (stub the client first if notification svc isn't ready).
-- **Verify (curl):** full CRUD works and returns the consistent `{success, data}` shape.
-
-### Phase 5 — Customers CRUD
-- Same layering for customers; validate `company_id` exists; include company name in reads.
-- Add customer-created notification trigger.
-- **Verify (curl):** CRUD works, `company_id` FK enforced, notifications triggered.
-
-### Phase 6 — Tasks CRUD
-- Same layering; include customer name in reads; enforce `priority`/`status` enums via zod.
-- Add task-assigned trigger on create and task-completed trigger on `Done` transition.
-- **Verify (curl):** CRUD works; completing a task triggers a notification.
-
-### Phase 7 — Notifications proxy + health
-- `GET /api/notifications` proxies to notification service.
-- `GET /api/health`.
-- **Verify:** health returns ok; notifications endpoint returns data when notification svc is up.
-
-### Phase 8 — Trim UI + Docker
-- Replace `app/page.tsx` boilerplate with a minimal "API service running" placeholder.
-- Add `Dockerfile` (multi-stage) and `.dockerignore`.
-- **Verify:** `docker build` succeeds; image runs and `/api/health` responds.
-  (Full `docker compose up` is orchestrated at the repo root, not here.)
-
-### Phase 9 — Final verification (definition of done)
-- `npm run lint` clean, `npm run build` succeeds.
-- All endpoints return the consistent response shape and validate input.
-- `.env` is **not** committed; `.env.example` is up to date.
-- Service reaches PostgreSQL and the notification service using service names (not localhost)
-  when running under Docker.
-
+| Phase | What was built |
+|---|---|
+| **0** — Reconfirm tooling | Verified scaffold, read Next.js 16 route-handler docs, installed deps |
+| **1** — Foundations | `lib/config.ts`, `lib/db.ts`, `lib/migrate.ts`, `001_init.sql`, `.env`/`.env.example` |
+| **2** — Utilities | `lib/utils/response.ts`, `lib/utils/auth.ts`, `user` model/repo |
+| **3** — Auth endpoints | `POST /api/login`, `GET /api/me` + `authService` |
+| **4** — Companies CRUD | `company` model/repo/service + `/api/companies` routes + notification trigger |
+| **5** — Customers CRUD | `customer` model/repo/service + `/api/customers` routes + notification trigger |
+| **6** — Tasks CRUD | `task` model/repo/service + `/api/tasks` routes + notification triggers |
+| **7** — Notifications proxy | `GET /api/notifications` (proxy), `GET /api/health`, `notificationClient.ts` |
+| **8** — Trim UI + Docker | Minimal `app/page.tsx`, multi-stage `Dockerfile`, `.dockerignore` |
+| **9** — Final verification | `npm run lint` ✓, `npm run build` ✓, response shapes verified, `.env` protected |
 ---
 
 ## 10. Out of scope (do not add)
@@ -500,13 +522,13 @@ JWT_SECRET=change-me
 
 ---
 
-## 12. Verification checklist for any future change
+## 12. Verification checklist (for any future change)
 
 Before considering any task done, confirm:
 
 1. `npm run lint` passes.
 2. `npm run build` passes.
-3. `docker build` works (once Dockerfile exists).
+3. `docker build` works.
 4. Endpoints still return `{ success, data | message }`.
 5. No secrets/URLs hardcoded; all via env.
 6. New SQL changes have a migration file.
