@@ -373,3 +373,13 @@ Each service pushed separately.
 - Complex reporting
 - Advanced permissions (RBAC beyond a simple admin/user model)
 - CI/CD pipelines (these can be added later as a separate enhancement)
+
+Project Ports Design
+
+Local Development Ports
+
+- Service	Technology	Container Port	Local Port	Purpose
+- Frontend	Next.js	3000	3000	User interface
+- API Service	Next.js API	4000	4000	Main backend
+- Notification Service	Node.js	5000	5000	Internal notifications
+- PostgreSQL	PostgreSQL	5432	5432	Database
