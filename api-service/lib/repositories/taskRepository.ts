@@ -79,7 +79,7 @@ export async function update(
 
   vals.push(id);
   const { rows } = await query<Task>(
-    `UPDATE tasks t SET ${sets.join(", ")} WHERE t.id = $${idx}`,
+    `UPDATE tasks SET ${sets.join(", ")} WHERE id = $${idx}`,
     vals
   );
   if (rows.length === 0) return null;

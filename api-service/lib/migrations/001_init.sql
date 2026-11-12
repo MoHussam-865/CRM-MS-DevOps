@@ -1,4 +1,4 @@
-﻿-- 001_init.sql -- initial schema (no seed -- done programmatically in scripts/seed.ts)
+-- 001_init.sql -- initial schema (no seed -- done programmatically in scripts/seed.ts)
 -- Depends on pgcrypto extension for password hashing.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
