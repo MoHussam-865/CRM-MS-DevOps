@@ -1,6 +1,6 @@
-import type { ApiResponse } from "@/src/types";
+﻿import type { ApiResponse } from "@/src/types";
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+// --- Types -----------------------------------------------------------------
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -13,7 +13,7 @@ interface ApiClient {
 
 type RequestOptions = Omit<RequestInit, "method" | "body">;
 
-// ─── Factory ───────────────────────────────────────────────────────────────
+// --- Factory ---------------------------------------------------------------
 
 export function apiClient(baseUrl: string): ApiClient {
   async function request<T>(
@@ -22,7 +22,7 @@ export function apiClient(baseUrl: string): ApiClient {
     body?: unknown,
     options?: RequestOptions,
   ): Promise<ApiResponse<T>> {
-    const url = new URL(path, baseUrl);
+    const url = baseUrl ? new URL(path, baseUrl).toString() : path;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -36,7 +36,7 @@ export function apiClient(baseUrl: string): ApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(url.toString(), {
+    const res = await fetch(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -63,14 +63,15 @@ export function apiClient(baseUrl: string): ApiClient {
   };
 }
 
-// ─── Singleton Instance ────────────────────────────────────────────────────
+// --- Singleton Instance ----------------------------------------------------
 
 let _client: ApiClient | null = null;
 
 export function getApiClient(): ApiClient {
   if (!_client) {
-    const url = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+    const url = "";  // relative — Next.js rewrites /api/* to backend
     _client = apiClient(url);
   }
   return _client;
 }
+

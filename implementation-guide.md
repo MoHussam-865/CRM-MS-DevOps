@@ -29,25 +29,27 @@
                     ┌──────────▼───────────┐
                     │ Frontend (Next.js)   │  Port 3000
                     │ image: frontend      │
-                    └──────────┬───────────┘
-                               │
-                         REST API calls
-                    (NEXT_PUBLIC_API_URL)
-                               │
-                    ┌──────────▼───────────┐
-                    │ API Service           │  Port 4000
-                    │ image: api            │
-                    │ (Next.js API)         │
-                    └───────┬──────────────┘
+                    │                      │
+                    │  ┌───────────────┐   │
+                    │  │ Rewrite Proxy │   │  ← /api/* → backend
+                    │  └──────┬────────┘   │
+                    └─────────┼────────────┘
+                              │  proxied to api:4000
+                              │  (Docker internal DNS)
+                    ┌─────────▼────────────┐
+                    │ API Service          │  Port 4000
+                    │ image: api           │
+                    │ (Next.js API)        │
+                    └───────┬─────────────┘
                             │
-             ┌──────────────┴───────────────┐
-             │                              │
-   ┌─────────▼────────┐        ┌────────────▼──────────┐
-   │ PostgreSQL       │        │ Notification Service  │
-   │ Port 5432        │        │ Port 5000             │
-   │ DB: crm          │        │ Express.js            │
-   └──────────────────┘        │ image: notif-svc      │
-                               └───────────────────────┘
+             ┌──────────────┴──────────────┐
+             │                             │
+   ┌─────────▼────────┐       ┌────────────▼─────────┐
+   │ PostgreSQL       │       │ Notification Service │
+   │ Port 5432        │       │ Port 5000            │
+   │ DB: crm          │       │ Express.js           │
+   └──────────────────┘       │ image: notif-svc     │
+                              └──────────────────────┘
 ```
 
 | Service | Technology | Container Port | Host Port | Docker Image Name |
@@ -82,11 +84,19 @@ awareness.
 
 | Variable | Required | Docker Value | Description |
 |---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | **Yes** | `http://api:4000` | Base URL of the API Service (uses Docker service name `api`) |
+| `API_URL` | **Yes** | `http://api:4000` | Backend API URL used by the Next.js rewrite proxy (server-side only) |
 
-> **Note:** `NEXT_PUBLIC_*` variables are baked into the Next.js build at build time.
-> For this project, the default fallback in `src/lib/api.ts` is `http://localhost:4000`,
-> so set it explicitly in Compose.
+> `API_URL` is a **runtime environment variable** read only by the Next.js server
+> during `async rewrites()` in `next.config.ts`. It is **not** prefixed with
+> `NEXT_PUBLIC_`, so it stays out of the client-side JavaScript bundle. The browser
+> never directly calls the API — it calls `/api/*` on the same origin, and the
+> Next.js server proxies those requests to the backend.
+
+| Old approach (replaced) | New approach (current) |
+|---|---|
+| `NEXT_PUBLIC_API_URL=http://192.168.1.35:4000`  →  client calls API directly | `API_URL=http://api:4000`  →  Next.js rewrite proxy handles API calls |
+| Browser must resolve the API hostname (problematic in Docker) | Browser only talks to its own origin (localhost:3000) |
+| Rebuild required when changing the host | Change env var at runtime, restart container |
 
 ### 3.2 API Service
 
@@ -262,7 +272,7 @@ Change these to match your environment:
 | Database password | `POSTGRES_PASSWORD` in `postgres` + `DATABASE_URL` in `api` and `notification-service` | Must match in all three places |
 | JWT secret | `JWT_SECRET` in `api` | Use a strong random string |
 | Admin email / password | `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `api` | Only used on first run (seed) |
-| API URL for frontend | `NEXT_PUBLIC_API_URL` in `frontend` | `http://api:4000` for Docker |
+| API URL for frontend | `API_URL` in `frontend` | `http://api:4000` for Docker |
 
 ---
 
@@ -366,22 +376,22 @@ Navigate to **http://localhost:3000** in your browser.
 
 ## 9. Troubleshooting
 
-### 9.1 Frontend calls API but browser can't reach `api:4000`
+### 9.1 API calls failing from the browser (404, DNS errors)
 
-The frontend calls the API using `NEXT_PUBLIC_API_URL`. The value `http://api:4000`
-uses the Docker service name `api` which only resolves **inside the Docker network**.
-If you access the frontend from your **host machine browser**, the browser runs on
-your host and cannot resolve `api`.
+With Next.js Rewrites, the browser **never directly calls the API backend** — it
+makes requests to `/api/*` on its own origin (port 3000), and the Next.js server
+proxies them to the backend using the internal Docker hostname `api:4000`.
 
-**Solution:** Set `NEXT_PUBLIC_API_URL=http://localhost:4000` in the frontend
-environment for local development, then rebuild the image:
+If API calls fail from the browser:
 
-```bash
-# In docker-compose.yml, change the frontend env to:
-#   NEXT_PUBLIC_API_URL: http://localhost:4000
-docker compose build frontend
-docker compose up -d frontend
-```
+- **404 errors** → The rewrite is likely not matching. Check `docker compose logs frontend`
+  for rewrite activity. Ensure the frontend's `next.config.ts` includes the `async rewrites()` block.
+- **Connection refused** → Ensure the `api` container is healthy: `docker compose ps api`.
+  The frontend depends on the API service, but if the API isn't up yet, the frontend
+  may start first. Restart the frontend: `docker compose restart frontend`.
+- **Wrong backend URL** → Verify the frontend's `API_URL` env var in Compose is
+  set to `http://api:4000`. This is a **server-side runtime variable**, not a
+  client-side build-time variable, so you can change it and restart without rebuilding.
 
 ### 9.2 Database connection errors
 
@@ -428,7 +438,7 @@ not fail. Notifications simply won't be created until the service is back up.
 
 ```bash
 # -- Build all images --
-docker build -t frontend ./frontend
+docker build --build-arg NEXT_PUBLIC_API_URL=http://192.168.1.35:4000 -t frontend ./frontend
 docker build -t api ./api-service
 docker build -t notification-service ./notification-service
 

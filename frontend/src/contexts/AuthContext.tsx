@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     if (!token) {
+      setLoading(false);
       return;
     }
 

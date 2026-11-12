@@ -26,9 +26,14 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/next.config.ts ./next.config.ts
 
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+
 # Run as non-root
 USER node
 
 EXPOSE 4000
 
-CMD ["npm", "start"]
+# Run migrations/seed on startup, then start the Next.js server
+CMD ["sh", "-c", "npx tsx scripts/migrate.ts && npm start"]

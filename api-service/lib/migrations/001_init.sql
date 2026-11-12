@@ -1,9 +1,9 @@
--- 001_init.sql — initial schema + dev seed admin
+﻿-- 001_init.sql -- initial schema (no seed -- done programmatically in scripts/seed.ts)
 -- Depends on pgcrypto extension for password hashing.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- ── users ──────────────────────────────────────────────
+-- ---- users ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email      TEXT NOT NULL UNIQUE,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ── companies ──────────────────────────────────────────
+-- ---- companies ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS companies (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS companies (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ── customers ──────────────────────────────────────────
+-- ---- customers ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS customers (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- ── tasks ──────────────────────────────────────────────
+-- ---- tasks ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tasks (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -45,12 +45,3 @@ CREATE TABLE IF NOT EXISTS tasks (
   due_date    DATE,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
--- ── seed admin user (idempotent) ───────────────────────
-INSERT INTO users (email, password_hash, name)
-VALUES (
-  'admin@crm.local',
-  crypt('admin123', gen_salt('bf')),
-  'Admin'
-)
-ON CONFLICT (email) DO NOTHING;
