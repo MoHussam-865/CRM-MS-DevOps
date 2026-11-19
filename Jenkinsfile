@@ -69,9 +69,7 @@ pipeline {
                                 sh "docker build -t ${imageName} ."
 
                                 // Push to Docker Hub
-                                docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-                                    sh "docker push ${imageName}"
-                                }
+                                sh "docker push ${imageName}"
 
                                 echo "Successfully pushed ${imageName}"
                             }
@@ -95,9 +93,7 @@ pipeline {
                                 sh "docker build -t ${imageName} ."
 
                                 // Push to Docker Hub
-                                docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-                                    sh "docker push ${imageName}"
-                                }
+                                sh "docker push ${imageName}"
 
                                 echo "Successfully pushed ${imageName}"
                             }
@@ -121,9 +117,7 @@ pipeline {
                                 sh "docker build -t ${imageName} ."
 
                                 // Push to Docker Hub
-                                docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-                                    sh "docker push ${imageName}"
-                                }
+                                sh "docker push ${imageName}"
 
                                 echo "Successfully pushed ${imageName}"
                             }
