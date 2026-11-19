@@ -1,4 +1,4 @@
-# ── Builder stage ──
+# --- Builder stage ---
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -11,7 +11,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# ── Runner stage ──
+# --- Runner stage ---
 FROM node:22-alpine AS runner
 
 WORKDIR /app
