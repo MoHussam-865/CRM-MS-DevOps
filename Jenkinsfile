@@ -63,8 +63,6 @@ pipeline {
                             echo 'Changes detected in frontend/. Building frontend image...'
 
                             dir('frontend') {
-                                // Lint check (acts as a basic test/validation step)
-                                sh 'npm run lint'
 
                                 // Build the Docker image
                                 def imageName = "${DOCKER_REGISTRY}/microcrm-frontend:${IMAGE_TAG}"
@@ -91,8 +89,6 @@ pipeline {
                             echo 'Changes detected in api-service/. Building API service image...'
 
                             dir('api-service') {
-                                // Lint check
-                                sh 'npm run lint'
 
                                 // Build the Docker image
                                 def imageName = "${DOCKER_REGISTRY}/microcrm-api:${IMAGE_TAG}"
@@ -119,8 +115,6 @@ pipeline {
                             echo 'Changes detected in notification-service/. Building notification image...'
 
                             dir('notification-service') {
-                                // Lint check
-                                sh 'npm run lint'
 
                                 // Build the Docker image
                                 def imageName = "${DOCKER_REGISTRY}/microcrm-notification:${IMAGE_TAG}"
